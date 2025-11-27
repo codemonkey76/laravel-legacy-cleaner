@@ -30,7 +30,8 @@ class CodeSearchService
             $filePath = $file[0];
             $content = file_get_contents($filePath);
 
-            if (preg_match_all("/$pattern/", $content, $matches)) {
+            // Use a delimiter that's unlikely to be in the pattern
+            if (@preg_match_all("~$pattern~", $content, $matches)) {
                 $count += count($matches[0]);
             }
         }
@@ -45,9 +46,13 @@ class CodeSearchService
         }
 
         $content = file_get_contents($filePath);
-        preg_match_all("/$pattern/", $content, $matches);
 
-        return count($matches[0]);
+        // Use a delimiter that's unlikely to be in the pattern
+        if (@preg_match_all("~$pattern~", $content, $matches)) {
+            return count($matches[0]);
+        }
+
+        return 0;
     }
 
     public function findReferences(string $className): array
