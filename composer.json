@@ -1,6 +1,6 @@
 {
   "name": "codemonkey76/laravel-legacy-cleaner",
-  "description": "Detect and manager unused/legacy code in Laravel applications\"",
+  "description": "Detect and manager unused/legacy code in Laravel applications",
   "type": "library",
   "license": "MIT",
   "keywords": [

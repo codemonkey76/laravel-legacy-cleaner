@@ -2,11 +2,11 @@
 
 namespace Codemonkey76\LegacyCleaner\Analyzers;
 
+use Codemonkey76\LegacyCleaner\Services\CodeSearchService;
+use Codemonkey76\LegacyCleaner\Support\UsageResult;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
-use YourName\LegacyCleaner\Services\CodeSearchService;
-use YourName\LegacyCleaner\Support\UsageResult;
 use ReflectionClass;
 use ReflectionMethod;
 

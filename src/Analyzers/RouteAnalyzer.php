@@ -1,11 +1,11 @@
 <?php
 
-namespace YourName\LegacyCleaner\Analyzers;
+namespace Codemonkey76\LegacyCleaner\Analyzers;
 
 use Illuminate\Routing\RouteCollection;
 use Illuminate\Support\Collection;
-use YourName\LegacyCleaner\Services\CodeSearchService;
-use YourName\LegacyCleaner\Support\UsageResult;
+use Codemonkey76\LegacyCleaner\Services\CodeSearchService;
+use Codemonkey76\LegacyCleaner\Support\UsageResult;
 
 class RouteAnalyzer
 {

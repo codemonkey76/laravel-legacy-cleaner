@@ -5,6 +5,7 @@ namespace Codemonkey76\LegacyCleaner;
 use Codemonkey76\LegacyCleaner\Commands\AnalyzeControllersCommand;
 use Codemonkey76\LegacyCleaner\Commands\AnalyzeModelsCommand;
 use Codemonkey76\LegacyCleaner\Commands\AnalyzeRoutesCommand;
+use Codemonkey76\LegacyCleaner\Commands\AnalyzeViewsCommand;
 use Codemonkey76\LegacyCleaner\Commands\GenerateReportCommand;
 use Illuminate\Support\ServiceProvider;
 
