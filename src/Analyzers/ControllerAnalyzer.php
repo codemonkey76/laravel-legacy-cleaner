@@ -30,6 +30,10 @@ class ControllerAnalyzer
         foreach ($controllers as $controller) {
             $result = $this->analyzeController($controller);
 
+            if ($result === null) {
+                continue; // Skip controllers that can't be analyzed
+            }
+
             if ($result['is_unused']) {
                 $unused->push($result);
             } else {
@@ -61,9 +65,15 @@ class ControllerAnalyzer
         return $controllers;
     }
 
-    protected function analyzeController(string $controller): array
+    protected function analyzeController(string $controller): ?array
     {
-        $reflection = new ReflectionClass($controller);
+        try {
+            $reflection = new ReflectionClass($controller);
+        } catch (\ReflectionException $_e) {
+            // Skip controllers that can't be loaded (syntax errors, missing dependencies, etc.)
+            return null;
+        }
+
         $methods = $reflection->getMethods(ReflectionMethod::IS_PUBLIC);
 
         $usedInRoutes = $this->isUsedInRoutes($controller);
@@ -112,7 +122,10 @@ class ControllerAnalyzer
         foreach ($routes as $route) {
             $action = $route->getAction('controller');
 
-            if ($action === "$controller@$method" || $action === [$controller, $method]) {
+            if (
+                $action === "$controller@$method" ||
+                $action === [$controller, $method]
+            ) {
                 return true;
             }
         }

@@ -22,17 +22,21 @@ class GenerateReportCommand extends Command
     ) {
         $this->info('Generating legacy code report...');
 
-        $this->task('Analyzing routes', function () use ($routeAnalyzer, &$routeResults) {
-            $routeResults = $routeAnalyzer->analyze(\Illuminate\Support\Facades\Route::getRoutes());
-        });
+        $this->line('Analyzing routes...');
+        $routeResults = $routeAnalyzer->analyze(\Illuminate\Support\Facades\Route::getRoutes());
 
-        $this->task('Analyzing controllers', function () use ($controllerAnalyzer, &$controllerResults) {
-            $controllerResults = $controllerAnalyzer->analyze();
-        });
+        $this->line('Analyzing controllers...');
+        $controllerResults = $controllerAnalyzer->analyze();
 
         $format = $this->option('format');
         $outputPath = $this->option('output')
             ?? storage_path("app/legacy-cleaner/report-" . date('Y-m-d-His') . ".$format");
+
+        // Ensure directory exists
+        $directory = dirname($outputPath);
+        if (!is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
 
         $report = $reportGenerator->generate([
             'routes' => $routeResults,
