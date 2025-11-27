@@ -3,7 +3,6 @@
 namespace Codemonkey76\LegacyCleaner\Analyzers;
 
 use Illuminate\Routing\RouteCollection;
-use Illuminate\Support\Collection;
 use Codemonkey76\LegacyCleaner\Services\CodeSearchService;
 use Codemonkey76\LegacyCleaner\Support\UsageResult;
 
@@ -53,17 +52,20 @@ class RouteAnalyzer
     protected function findUsages(?string $routeName, string $routeUri): int
     {
         $count = 0;
+        $pattern = <<<'PATTERN'
+        route\(['\"]%s['\"]
+        PATTERN;
 
         // Search for route name usage
         if ($routeName) {
             $count += $this->searchService->searchInDirectory(
                 resource_path('js'),
-                "route\(['\"]$routeName['\"]"
+                $pattern
             );
 
             $count += $this->searchService->searchInDirectory(
                 resource_path('views'),
-                "route\(['\"]$routeName['\"]"
+                $pattern
             );
         }
 
@@ -83,7 +85,7 @@ class RouteAnalyzer
         }
 
         $excluded = config('legacy-cleaner.exclude.routes', []);
-        
+
         foreach ($excluded as $pattern) {
             if (fnmatch($pattern, $routeName)) {
                 return true;

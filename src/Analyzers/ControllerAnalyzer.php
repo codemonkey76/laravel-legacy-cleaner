@@ -112,8 +112,7 @@ class ControllerAnalyzer
         foreach ($routes as $route) {
             $action = $route->getAction('controller');
 
-            if ($action === "$controller@$method" ||
-                $action === [$controller, $method]) {
+            if ($action === "$controller@$method" || $action === [$controller, $method]) {
                 return true;
             }
         }

@@ -84,7 +84,7 @@ class ModelAnalyzer
 
                 $result['table_name'] = $tableName;
                 $result['table_exists'] = $tableExists;
-            } catch (\Throwable $e) {
+            } catch (\Throwable $_e) {
                 $result['table_name'] = 'Unknown';
                 $result['table_exists'] = false;
             }
