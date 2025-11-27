@@ -1,0 +1,54 @@
+{
+  "name": "codemonkey76/laravel-legacy-cleaner",
+  "description": "Detect and manager unused/legacy code in Laravel applications\"",
+  "type": "library",
+  "license": "MIT",
+  "keywords": [
+    "laravel",
+    "legacy-code",
+    "unused-code",
+    "code-analysis",
+    "refactoring"
+  ],
+  "authors": [
+    {
+      "name": "Shane Poppleton",
+      "email": "shane@bjja.com.au"
+    }
+  ],
+  "require": {
+    "php": "^8.1",
+    "illuminate/support": "^10.0|^11.0|^12.0",
+    "illuminate/console": "^10.0|^11.0|^12.0"
+  },
+  "require-dev": {
+    "laravel/pint": "^1.26",
+    "orchestra/testbench": "^8.0|^9.0",
+    "phpunit/phpunit": "^10.0|^11.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Codemonkey76\\LegacyCleaner\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Codemonkey76\\LegacyCleaner\\Tests\\": "tests/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Codemonkey76\\LegacyCleaner\\LegacyCleanerServiceProvider"
+      ],
+      "aliases": {
+        "LegacyCleaner": "Codemonkey76\\LegacyCleaner\\Facades\\LegacyCleaner"
+      }
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "config": {
+    "sort-packages": true
+  }
+}
