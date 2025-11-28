@@ -10,6 +10,19 @@ class RouteAnalyzer
 {
     protected CodeSearchService $searchService;
 
+    // Framework routes that should be excluded by default
+    protected array $frameworkPatterns = [
+        'horizon.*',
+        'telescope*',
+        'sanctum.*',
+        'livewire.*',
+        'ignition.*',
+        '_ignition.*',
+        'debugbar.*',
+        'password.*',
+        'verification.*',
+    ];
+
     public function __construct(CodeSearchService $searchService)
     {
         $this->searchService = $searchService;
@@ -24,6 +37,12 @@ class RouteAnalyzer
             $routeName = $route->getName();
             $routeUri = $route->uri();
 
+            // Skip framework routes
+            if ($this->isFrameworkRoute($routeName)) {
+                continue;
+            }
+
+            // Skip if excluded in config
             if ($this->isExcluded($routeName)) {
                 continue;
             }
@@ -32,14 +51,14 @@ class RouteAnalyzer
 
             if ($usageCount === 0) {
                 $unused->push([
-                    'name' => $routeName,
+                    'name' => $routeName ?: 'Unnamed',
                     'uri' => $routeUri,
                     'method' => implode('|', $route->methods()),
                     'action' => $route->getActionName(),
                 ]);
             } else {
                 $used->push([
-                    'name' => $routeName,
+                    'name' => $routeName ?: 'Unnamed',
                     'uri' => $routeUri,
                     'usage_count' => $usageCount,
                 ]);
@@ -52,30 +71,79 @@ class RouteAnalyzer
     protected function findUsages(?string $routeName, string $routeUri): int
     {
         $count = 0;
-        $pattern = <<<'PATTERN'
-        route\(['\"]%s['\"]
-        PATTERN;
 
         // Search for route name usage
         if ($routeName) {
-            $count += $this->searchService->searchInDirectory(
-                resource_path('js'),
-                $pattern
-            );
+            // Search for route('name') - use simpler string patterns
+            $pattern = 'route\([\'"]' . preg_quote($routeName, '~') . '[\'"]';
 
-            $count += $this->searchService->searchInDirectory(
-                resource_path('views'),
-                $pattern
-            );
+            $jsPath = resource_path('js');
+            $viewsPath = resource_path('views');
+
+            if (is_dir($jsPath)) {
+                $count += $this->searchService->searchInDirectory($jsPath, $pattern);
+            }
+
+            if (is_dir($viewsPath)) {
+                $count += $this->searchService->searchInDirectory($viewsPath, $pattern);
+            }
         }
 
-        // Search for direct URI usage
-        $count += $this->searchService->searchInDirectory(
-            resource_path(),
-            $routeUri
-        );
+        // Search for direct URI usage (simple string search, not regex)
+        // Only search if URI doesn't contain parameters
+        if (!str_contains($routeUri, '{')) {
+            $jsPath = resource_path('js');
+            $viewsPath = resource_path('views');
+
+            if (is_dir($jsPath)) {
+                $count += $this->searchInDirectoryForString($jsPath, $routeUri);
+            }
+
+            if (is_dir($viewsPath)) {
+                $count += $this->searchInDirectoryForString($viewsPath, $routeUri);
+            }
+        }
 
         return $count;
+    }
+
+    protected function searchInDirectoryForString(string $directory, string $searchString): int
+    {
+        $count = 0;
+
+        try {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($directory, \RecursiveDirectoryIterator::SKIP_DOTS)
+            );
+
+            foreach ($iterator as $file) {
+                if ($file->isFile() && in_array($file->getExtension(), ['php', 'js', 'vue', 'ts', 'tsx', 'jsx'])) {
+                    $content = @file_get_contents($file->getPathname());
+                    if ($content !== false) {
+                        $count += substr_count($content, $searchString);
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            // Silently handle directory traversal errors
+        }
+
+        return $count;
+    }
+
+    protected function isFrameworkRoute(?string $routeName): bool
+    {
+        if (!$routeName) {
+            return false;
+        }
+
+        foreach ($this->frameworkPatterns as $pattern) {
+            if (fnmatch($pattern, $routeName)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function isExcluded(?string $routeName): bool

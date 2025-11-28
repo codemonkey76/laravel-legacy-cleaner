@@ -61,6 +61,18 @@ class ReportGenerator
                         $markdown .= "  - File: `" . $item['file'] . "`\n";
                     }
 
+                    if (isset($item['uri'])) {
+                        $markdown .= "  - URI: `" . $item['uri'] . "`\n";
+                    }
+
+                    if (isset($item['method'])) {
+                        $markdown .= "  - Method: `" . $item['method'] . "`\n";
+                    }
+
+                    if (isset($item['action'])) {
+                        $markdown .= "  - Action: `" . $item['action'] . "`\n";
+                    }
+
                     if (isset($item['references'])) {
                         $markdown .= "  - References: " . $item['references'] . "\n";
                     }
@@ -118,19 +130,40 @@ class ReportGenerator
             $html .= "<div class='unused-items'>";
             $html .= "<h3>Unused Items</h3>";
             $html .= "<table>";
-            $html .= "<thead><tr>";
-            $html .= "<th>Item</th>";
-            $html .= "<th>File</th>";
-            $html .= "<th>References</th>";
-            $html .= "</tr></thead>";
-            $html .= "<tbody>";
 
-            foreach ($result->getUnused() as $item) {
-                $html .= "<tr>";
-                $html .= "<td><code>" . htmlspecialchars($item['class'] ?? $item['name'] ?? 'Unknown') . "</code></td>";
-                $html .= "<td><small>" . htmlspecialchars($item['file'] ?? 'N/A') . "</small></td>";
-                $html .= "<td>" . ($item['references'] ?? 0) . "</td>";
-                $html .= "</tr>";
+            // Different headers for routes vs controllers
+            if ($type === 'routes') {
+                $html .= "<thead><tr>";
+                $html .= "<th>Route Name</th>";
+                $html .= "<th>URI</th>";
+                $html .= "<th>Method</th>";
+                $html .= "<th>Action</th>";
+                $html .= "</tr></thead>";
+                $html .= "<tbody>";
+
+                foreach ($result->getUnused() as $item) {
+                    $html .= "<tr>";
+                    $html .= "<td><code>" . htmlspecialchars($item['name'] ?? 'Unnamed') . "</code></td>";
+                    $html .= "<td><small>" . htmlspecialchars($item['uri'] ?? '') . "</small></td>";
+                    $html .= "<td>" . htmlspecialchars($item['method'] ?? '') . "</td>";
+                    $html .= "<td><small>" . htmlspecialchars($item['action'] ?? '') . "</small></td>";
+                    $html .= "</tr>";
+                }
+            } else {
+                $html .= "<thead><tr>";
+                $html .= "<th>Item</th>";
+                $html .= "<th>File</th>";
+                $html .= "<th>References</th>";
+                $html .= "</tr></thead>";
+                $html .= "<tbody>";
+
+                foreach ($result->getUnused() as $item) {
+                    $html .= "<tr>";
+                    $html .= "<td><code>" . htmlspecialchars($item['class'] ?? $item['name'] ?? 'Unknown') . "</code></td>";
+                    $html .= "<td><small>" . htmlspecialchars($item['file'] ?? 'N/A') . "</small></td>";
+                    $html .= "<td>" . ($item['references'] ?? 0) . "</td>";
+                    $html .= "</tr>";
+                }
             }
 
             $html .= "</tbody></table>";
@@ -165,7 +198,7 @@ class ReportGenerator
             padding: 20px;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             background: white;
             padding: 40px;
@@ -235,6 +268,7 @@ class ReportGenerator
         }
         small {
             color: #7f8c8d;
+            font-size: 0.85em;
         }
     </style>
 </head>
