@@ -3,7 +3,7 @@
 namespace Codemonkey76\LegacyCleaner;
 
 use Codemonkey76\LegacyCleaner\Commands\AnalyzeControllersCommand;
-use Codemonkey76\LegacyCleaner\Commands\AnalyzeJavaScriptCommand;
+use Codemonkey76\LegacyCleaner\Commands\AnalyzeJavascriptCommand;
 use Codemonkey76\LegacyCleaner\Commands\AnalyzeModelsCommand;
 use Codemonkey76\LegacyCleaner\Commands\AnalyzeRoutesCommand;
 use Codemonkey76\LegacyCleaner\Commands\AnalyzeViewsCommand;
@@ -28,7 +28,7 @@ class LegacyCleanerServiceProvider extends ServiceProvider
                 AnalyzeControllersCommand::class,
                 AnalyzeModelsCommand::class,
                 AnalyzeViewsCommand::class,
-                AnalyzeJavaScriptCommand::class,
+                AnalyzeJavascriptCommand::class,
                 GenerateReportCommand::class,
             ]);
 
