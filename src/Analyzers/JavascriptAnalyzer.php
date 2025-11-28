@@ -17,9 +17,6 @@ class JavascriptAnalyzer
         'main.ts',
         'bootstrap.js',
         'bootstrap.ts',
-        'vite.config.js',
-        'vite.config.ts',
-        'webpack.mix.js',
     ];
 
     // Patterns for files that are auto-loaded (like pages in some frameworks)
@@ -37,7 +34,7 @@ class JavascriptAnalyzer
 
     public function analyze(?string $jsPath = null): UsageResult
     {
-        $jsPath = $jsPath ?? resource_path('js');
+        $jsPath = $jsPath ?? config('legacy-cleaner.paths.javascript', resource_path('js'));
 
         if (!is_dir($jsPath)) {
             return new UsageResult(collect(), collect());
@@ -72,6 +69,9 @@ class JavascriptAnalyzer
             if ($file->isFile()) {
                 $extension = $file->getExtension();
                 if (in_array($extension, ['js', 'ts', 'vue', 'jsx', 'tsx', 'mjs'])) {
+                    if ($this->isExcludedByPattern($file->getFilename())) {
+                        continue;
+                    }
                     $files[] = [
                         'path' => $file->getPathname(),
                         'name' => $file->getFilename(),
@@ -159,6 +159,18 @@ class JavascriptAnalyzer
     protected function isEntryPoint(string $filename): bool
     {
         return in_array($filename, $this->entryPointPatterns);
+    }
+
+    protected function isExcludedByPattern(string $filename): bool
+    {
+        $excludePatterns = config('legacy-cleaner.exclude.javascript', []);
+
+        foreach ($excludePatterns as $pattern) {
+            if (fnmatch($pattern, $filename)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     protected function isAutoLoaded(string $relativePath): bool

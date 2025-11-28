@@ -14,6 +14,7 @@ return [
         'middleware' => app_path('Http/Middleware'),
         'requests' => app_path('Http/Requests'),
         'jobs' => app_path('Jobs'),
+        'javascript' => resource_path('js'),
     ],
 
     /*
@@ -27,6 +28,20 @@ return [
         ],
         'routes' => [
             // Route names to exclude from analysis
+        ],
+        'javascript' => [
+            '*.d.ts', // TypeScript declaration files
+            '*.test.ts', // Test files
+            '*.test.js',
+            '*.spec.ts',
+            '*.spec.js',
+            'vite.config.ts',
+            'vite.config.js',
+            'vitest.config.js',
+            'tailwind.config.js',
+            'postcss.config.js',
+            '*.config.ts',
+            '*.config.js',
         ],
     ],
     /*
