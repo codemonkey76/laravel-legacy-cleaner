@@ -2,12 +2,14 @@
 
 namespace Codemonkey76\LegacyCleaner\Analyzers;
 
+use Illuminate\Support\Facades\File;
 use Codemonkey76\LegacyCleaner\Services\CodeSearchService;
 use Codemonkey76\LegacyCleaner\Support\UsageResult;
 
-class JavascriptAnalyzer
+class JavaScriptAnalyzer
 {
     protected CodeSearchService $searchService;
+    protected ?array $inertiaRenders = null;
 
     // Files that are typically entry points and should be excluded
     protected array $entryPointPatterns = [
@@ -19,17 +21,21 @@ class JavascriptAnalyzer
         'bootstrap.ts',
     ];
 
-    // Patterns for files that are auto-loaded (like pages in some frameworks)
+    // Patterns for files that are auto-loaded (like layouts)
     protected array $autoLoadedPatterns = [
-        '*/Pages/*',
-        '*/pages/*',
+        'layouts/*',
         '*/layouts/*',
+        'Layouts/*',
         '*/Layouts/*',
     ];
 
     public function __construct(CodeSearchService $searchService)
     {
         $this->searchService = $searchService;
+
+        // Load auto-loaded patterns from config, merge with defaults
+        $configPatterns = config('legacy-cleaner.javascript.auto_loaded_patterns', []);
+        $this->autoLoadedPatterns = array_merge($this->autoLoadedPatterns, $configPatterns);
     }
 
     public function analyze(?string $jsPath = null): UsageResult
@@ -69,9 +75,11 @@ class JavascriptAnalyzer
             if ($file->isFile()) {
                 $extension = $file->getExtension();
                 if (in_array($extension, ['js', 'ts', 'vue', 'jsx', 'tsx', 'mjs'])) {
+                    // Skip files matching exclusion patterns
                     if ($this->isExcludedByPattern($file->getFilename())) {
                         continue;
                     }
+
                     $files[] = [
                         'path' => $file->getPathname(),
                         'name' => $file->getFilename(),
@@ -98,22 +106,34 @@ class JavascriptAnalyzer
             ]);
         }
 
-        // Skip auto-loaded files (like Inertia pages)
+        // Skip auto-loaded files (like layouts)
         if ($this->isAutoLoaded($fileInfo['relative_path'])) {
             return array_merge($fileInfo, [
                 'is_unused' => false,
                 'references' => -1,
-                'reason' => 'Auto-loaded file (Pages/Layouts)',
+                'reason' => 'Auto-loaded file (Layouts)',
             ]);
         }
 
-        // Find references
-        $references = $this->findFileReferences($fileInfo, $basePath);
+        // Find references via imports
+        $importReferences = $this->findFileReferences($fileInfo, $basePath);
+
+        // Check if file is rendered by Inertia
+        $inertiaReference = $this->isRenderedByInertia($fileInfo, $basePath);
+
+        $totalReferences = $importReferences + ($inertiaReference ? 1 : 0);
+
+        $reason = null;
+        if ($totalReferences === 0) {
+            $reason = 'No imports or Inertia::render() found';
+        } elseif ($inertiaReference && $importReferences === 0) {
+            $reason = 'Rendered by Inertia';
+        }
 
         return array_merge($fileInfo, [
-            'is_unused' => $references === 0,
-            'references' => $references,
-            'reason' => $references === 0 ? 'No imports found' : null,
+            'is_unused' => $totalReferences === 0,
+            'references' => $totalReferences,
+            'reason' => $reason,
         ]);
     }
 
@@ -156,9 +176,91 @@ class JavascriptAnalyzer
         return $count;
     }
 
+    protected function isRenderedByInertia(array $fileInfo, string $_basePath): bool
+    {
+        // Only check Vue files in Pages directory for Inertia rendering
+        if ($fileInfo['extension'] !== 'vue') {
+            return false;
+        }
+
+        // Check if file is in a Pages directory
+        if (
+            !preg_match('#/Pages/#', $fileInfo['relative_path']) &&
+            !preg_match('#^Pages/#', $fileInfo['relative_path'])
+        ) {
+            return false;
+        }
+
+        // Lazy load Inertia renders on first use
+        if ($this->inertiaRenders === null) {
+            $this->inertiaRenders = $this->getInertiaRenders();
+        }
+
+        // Convert file path to Inertia component name
+        // e.g., "Pages/Admin/CustomerIndex.vue" -> "Admin/CustomerIndex"
+        $componentName = preg_replace('#^Pages/#', '', $fileInfo['relative_path']);
+        $componentName = str_replace('.vue', '', $componentName);
+
+        return in_array($componentName, $this->inertiaRenders);
+    }
+
+    protected function getInertiaRenders(): array
+    {
+        $renders = [];
+
+        // Search in all PHP files (controllers, routes, etc.)
+        $searchPaths = [
+            app_path(),
+            base_path('routes'),
+        ];
+
+        foreach ($searchPaths as $searchPath) {
+            if (!is_dir($searchPath)) {
+                continue;
+            }
+
+            $files = File::allFiles($searchPath);
+
+            foreach ($files as $file) {
+                if ($file->getExtension() !== 'php') {
+                    continue;
+                }
+
+                $content = file_get_contents($file->getPathname());
+
+                // Match Inertia::render('ComponentName') or Inertia::render("ComponentName")
+                // Also match Inertia\Inertia::render for when using the full namespace
+                preg_match_all(
+                    "/(?:Inertia::render|Inertia\\\\Inertia::render)\(['\"]([^'\"]+)['\"]/",
+                    $content,
+                    $matches
+                );
+
+                if (!empty($matches[1])) {
+                    foreach ($matches[1] as $componentName) {
+                        $renders[] = $componentName;
+                    }
+                }
+            }
+        }
+
+        return array_unique($renders);
+    }
+
     protected function isEntryPoint(string $filename): bool
     {
         return in_array($filename, $this->entryPointPatterns);
+    }
+
+    protected function isAutoLoaded(string $relativePath): bool
+    {
+        foreach ($this->autoLoadedPatterns as $pattern) {
+            if (fnmatch($pattern, $relativePath)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function isExcludedByPattern(string $filename): bool
@@ -167,16 +269,6 @@ class JavascriptAnalyzer
 
         foreach ($excludePatterns as $pattern) {
             if (fnmatch($pattern, $filename)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    protected function isAutoLoaded(string $relativePath): bool
-    {
-        foreach ($this->autoLoadedPatterns as $pattern) {
-            if (fnmatch($pattern, $relativePath)) {
                 return true;
             }
         }
