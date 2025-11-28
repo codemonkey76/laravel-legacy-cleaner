@@ -3,7 +3,7 @@
 namespace Codemonkey76\LegacyCleaner\Commands;
 
 use Illuminate\Console\Command;
-use Codemonkey76\LegacyCleaner\Analyzers\JavaScriptAnalyzer;
+use Codemonkey76\LegacyCleaner\Analyzers\JavascriptAnalyzer;
 
 class AnalyzeJavaScriptCommand extends Command
 {
@@ -15,7 +15,7 @@ class AnalyzeJavaScriptCommand extends Command
 
     protected $description = 'Analyze JavaScript/TypeScript files to find unused ones';
 
-    protected JavaScriptAnalyzer $analyzer;
+    protected JavascriptAnalyzer $analyzer;
 
     public function __construct(JavaScriptAnalyzer $analyzer)
     {

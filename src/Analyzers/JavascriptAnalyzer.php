@@ -5,7 +5,7 @@ namespace Codemonkey76\LegacyCleaner\Analyzers;
 use Codemonkey76\LegacyCleaner\Services\CodeSearchService;
 use Codemonkey76\LegacyCleaner\Support\UsageResult;
 
-class JavaScriptAnalyzer
+class JavascriptAnalyzer
 {
     protected CodeSearchService $searchService;
 
@@ -35,7 +35,7 @@ class JavaScriptAnalyzer
         $this->searchService = $searchService;
     }
 
-    public function analyze(string $jsPath): UsageResult
+    public function analyze(?string $jsPath = null): UsageResult
     {
         $jsPath = $jsPath ?? resource_path('js');
 
