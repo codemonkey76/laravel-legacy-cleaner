@@ -36,9 +36,10 @@ class RouteAnalyzer
         foreach ($routes as $route) {
             $routeName = $route->getName();
             $routeUri = $route->uri();
+            $action = $route->getActionName();
 
-            // Skip framework routes
-            if ($this->isFrameworkRoute($routeName)) {
+            // Skip framework routes by URI or action
+            if ($this->isFrameworkRoute($routeName, $routeUri, $action)) {
                 continue;
             }
 
@@ -54,7 +55,7 @@ class RouteAnalyzer
                     'name' => $routeName ?: 'Unnamed',
                     'uri' => $routeUri,
                     'method' => implode('|', $route->methods()),
-                    'action' => $route->getActionName(),
+                    'action' => $action,
                 ]);
             } else {
                 $used->push([
@@ -73,7 +74,7 @@ class RouteAnalyzer
         $count = 0;
 
         // Search for route name usage
-        if ($routeName) {
+        if ($routeName && $routeName !== 'Unnamed') {
             // Search for route('name') - use simpler string patterns
             $pattern = 'route\([\'"]' . preg_quote($routeName, '~') . '[\'"]';
 
@@ -124,21 +125,52 @@ class RouteAnalyzer
                     }
                 }
             }
-        } catch (\Exception $e) {
+        } catch (\Exception $_e) {
             // Silently handle directory traversal errors
         }
 
         return $count;
     }
 
-    protected function isFrameworkRoute(?string $routeName): bool
+    protected function isFrameworkRoute(?string $routeName, string $routeUri, string $action): bool
     {
-        if (!$routeName) {
-            return false;
+        // Check by route name
+        if ($routeName) {
+            foreach ($this->frameworkPatterns as $pattern) {
+                if (fnmatch($pattern, $routeName)) {
+                    return true;
+                }
+            }
         }
 
-        foreach ($this->frameworkPatterns as $pattern) {
-            if (fnmatch($pattern, $routeName)) {
+        // Check by URI prefix
+        $frameworkUriPrefixes = [
+            'horizon/',
+            'telescope/',
+            '_ignition/',
+            'sanctum/',
+            'livewire/',
+            '_debugbar/',
+        ];
+
+        foreach ($frameworkUriPrefixes as $prefix) {
+            if (str_starts_with($routeUri, $prefix)) {
+                return true;
+            }
+        }
+
+        // Check by controller namespace
+        $frameworkNamespaces = [
+            'Laravel\\Horizon\\',
+            'Laravel\\Telescope\\',
+            'Spatie\\LaravelIgnition\\',
+            'Laravel\\Sanctum\\',
+            'Livewire\\',
+            'Barryvdh\\Debugbar\\',
+        ];
+
+        foreach ($frameworkNamespaces as $namespace) {
+            if (str_starts_with($action, $namespace)) {
                 return true;
             }
         }
@@ -148,7 +180,7 @@ class RouteAnalyzer
 
     protected function isExcluded(?string $routeName): bool
     {
-        if (!$routeName) {
+        if (!$routeName || $routeName === 'Unnamed') {
             return false;
         }
 
