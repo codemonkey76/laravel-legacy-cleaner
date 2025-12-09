@@ -80,22 +80,31 @@ class ViewAnalyzer
 
     protected function findViewUsages(string $viewName): int
     {
-        // Inertia root view (or any other hard-wired root) will never show up
-        // in normal view()/markdown() scans, but is definitely used.
+        // Inertia root view (or any hard-wired root) will never appear in normal scans
         if ($viewName === 'app') {
+            return 1;
+        }
+
+        // Common vendor overrides are resolved internally by the framework and
+        // are effectively always "used" if present.
+        if (
+            Str::startsWith($viewName, 'vendor.mail.') ||
+            Str::startsWith($viewName, 'vendor.livewire.') ||
+            Str::startsWith($viewName, 'vendor.pagination.')
+        ) {
             return 1;
         }
 
         $quoted = preg_quote($viewName, '/');
         $count = 0;
 
-        // Search for view() calls
+        // Search for view('view.name')
         $count += $this->searchService->searchInDirectory(
             app_path(),
             "view\(['\"]{$quoted}['\"]"
         );
 
-        // Search for View::make() calls
+        // Search for View::make('view.name')
         $count += $this->searchService->searchInDirectory(
             app_path(),
             "View::make\(['\"]{$quoted}['\"]"
@@ -107,26 +116,25 @@ class ViewAnalyzer
             "loadView\(['\"]{$quoted}['\"]"
         );
 
-        // Search for ->markdown('view.name') on Mailables
+        // Classic Mailables: ->markdown('view.name')
         $count += $this->searchService->searchInDirectory(
             app_path(),
             "->markdown\(['\"]{$quoted}['\"]"
         );
 
-        // Search for new Content(markdown: 'view.name', ...)
-        // Laravel 9+ Mailable content API with named arguments
+        // New Mailables (Laravel 9+): Content(markdown: 'view.name', ...)
         $count += $this->searchService->searchInDirectory(
             app_path(),
             "markdown\s*:\s*['\"]{$quoted}['\"]"
         );
 
-        // Search for @extends, @include, @includeIf, @includeWhen, @component in other views
+        // Blade directives: @extends, @include*, @component('view.name')
         $count += $this->searchService->searchInDirectory(
             resource_path('views'),
             "@(?:extends|include|includeIf|includeWhen|includeUnless|includeFirst|component)\(['\"]{$quoted}['\"]"
         );
 
-        // Search for <x-component /> usage if it's a component under resources/views/components
+        // Search for <x-*> usage if it's a component under resources/views/components
         if (Str::startsWith($viewName, 'components.')) {
             $componentName = str_replace('components.', '', $viewName);
             $componentTag = str_replace('.', '-', $componentName);
@@ -137,7 +145,7 @@ class ViewAnalyzer
             );
         }
 
-        // Search for Inertia::render() if using Inertia (page components)
+        // Inertia::render('Pages/SomePage') – this covers your Vue page components
         $count += $this->searchService->searchInDirectory(
             app_path(),
             "Inertia::render\(['\"]{$quoted}['\"]"
