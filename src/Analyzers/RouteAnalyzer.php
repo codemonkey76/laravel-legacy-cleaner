@@ -73,60 +73,65 @@ class RouteAnalyzer
     {
         $count = 0;
 
+        // Directories to scan for route name usage
+        $nameSearchPaths = [
+            resource_path('js'),
+            resource_path('views'),
+            app_path(),
+            base_path('routes'),
+            base_path('tests'),
+        ];
+
         // Search for route name usage
         if ($routeName && $routeName !== 'Unnamed') {
-            // Search for route('name') - use simpler string patterns
-            $pattern = 'route\([\'"]' . preg_quote($routeName, '~') . '[\'"]';
+            $quotedName = preg_quote($routeName, '~');
 
-            $jsPath = resource_path('js');
-            $viewsPath = resource_path('views');
+            $patterns = [
+                // route('name')
+                "route\(['\"]{$quotedName}['\"]",
+                // to_route('name')
+                "to_route\(['\"]{$quotedName}['\"]",
+                // redirect()->route('name')
+                "redirect\(\)->route\(['\"]{$quotedName}['\"]",
+                // URL::route('name')
+                "URL::route\(['\"]{$quotedName}['\"]",
+                // routeIs('name')
+                "routeIs\(['\"]{$quotedName}['\"]",
+            ];
 
-            if (is_dir($jsPath)) {
-                $count += $this->searchService->searchInDirectory($jsPath, $pattern);
-            }
+            foreach ($nameSearchPaths as $path) {
+                if (!is_dir($path)) {
+                    continue;
+                }
 
-            if (is_dir($viewsPath)) {
-                $count += $this->searchService->searchInDirectory($viewsPath, $pattern);
-            }
-        }
-
-        // Search for direct URI usage (simple string search, not regex)
-        // Only search if URI doesn't contain parameters
-        if (!str_contains($routeUri, '{')) {
-            $jsPath = resource_path('js');
-            $viewsPath = resource_path('views');
-
-            if (is_dir($jsPath)) {
-                $count += $this->searchInDirectoryForString($jsPath, $routeUri);
-            }
-
-            if (is_dir($viewsPath)) {
-                $count += $this->searchInDirectoryForString($viewsPath, $routeUri);
-            }
-        }
-
-        return $count;
-    }
-
-    protected function searchInDirectoryForString(string $directory, string $searchString): int
-    {
-        $count = 0;
-
-        try {
-            $iterator = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator($directory, \RecursiveDirectoryIterator::SKIP_DOTS)
-            );
-
-            foreach ($iterator as $file) {
-                if ($file->isFile() && in_array($file->getExtension(), ['php', 'js', 'vue', 'ts', 'tsx', 'jsx'])) {
-                    $content = @file_get_contents($file->getPathname());
-                    if ($content !== false) {
-                        $count += substr_count($content, $searchString);
-                    }
+                foreach ($patterns as $pattern) {
+                    $count += $this->searchService->searchInDirectory($path, $pattern);
                 }
             }
-        } catch (\Exception $_e) {
-            // Silently handle directory traversal errors
+        }
+
+        // Search for direct URI usage (as a string literal), only if URI has no parameters
+        if (!str_contains($routeUri, '{')) {
+            $uriSearchPaths = [
+                resource_path('js'),
+                resource_path('views'),
+                app_path(),
+                base_path('routes'),
+            ];
+
+            // Normalize URI and build a pattern that matches either 'login' or '/login'
+            $trimmed = ltrim($routeUri, '/');
+            $plain = preg_quote($trimmed, '~');
+            $withSlash = '\/' . $plain;
+            $uriPattern = "['\"`]({$withSlash}|{$plain})['\"`]";
+
+            foreach ($uriSearchPaths as $path) {
+                if (!is_dir($path)) {
+                    continue;
+                }
+
+                $count += $this->searchService->searchInDirectory($path, $uriPattern);
+            }
         }
 
         return $count;
