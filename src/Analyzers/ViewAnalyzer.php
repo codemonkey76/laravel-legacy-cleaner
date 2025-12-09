@@ -80,27 +80,53 @@ class ViewAnalyzer
 
     protected function findViewUsages(string $viewName): int
     {
+        // Inertia root view (or any other hard-wired root) will never show up
+        // in normal view()/markdown() scans, but is definitely used.
+        if ($viewName === 'app') {
+            return 1;
+        }
+
+        $quoted = preg_quote($viewName, '/');
         $count = 0;
 
         // Search for view() calls
         $count += $this->searchService->searchInDirectory(
             app_path(),
-            "view\(['\"]" . preg_quote($viewName, '/') . "['\"]"
+            "view\(['\"]{$quoted}['\"]"
         );
 
         // Search for View::make() calls
         $count += $this->searchService->searchInDirectory(
             app_path(),
-            "View::make\(['\"]" . preg_quote($viewName, '/') . "['\"]"
+            "View::make\(['\"]{$quoted}['\"]"
         );
 
-        // Search for @extends, @include, @component in other views
+        // Search for PDF::loadView('view.name')
+        $count += $this->searchService->searchInDirectory(
+            app_path(),
+            "loadView\(['\"]{$quoted}['\"]"
+        );
+
+        // Search for ->markdown('view.name') on Mailables
+        $count += $this->searchService->searchInDirectory(
+            app_path(),
+            "->markdown\(['\"]{$quoted}['\"]"
+        );
+
+        // Search for new Content(markdown: 'view.name', ...)
+        // Laravel 9+ Mailable content API with named arguments
+        $count += $this->searchService->searchInDirectory(
+            app_path(),
+            "markdown\s*:\s*['\"]{$quoted}['\"]"
+        );
+
+        // Search for @extends, @include, @includeIf, @includeWhen, @component in other views
         $count += $this->searchService->searchInDirectory(
             resource_path('views'),
-            "@(?:extends|include|component)\(['\"]" . preg_quote($viewName, '/') . "['\"]"
+            "@(?:extends|include|includeIf|includeWhen|includeUnless|includeFirst|component)\(['\"]{$quoted}['\"]"
         );
 
-        // Search for <x-component /> usage if it's a component
+        // Search for <x-component /> usage if it's a component under resources/views/components
         if (Str::startsWith($viewName, 'components.')) {
             $componentName = str_replace('components.', '', $viewName);
             $componentTag = str_replace('.', '-', $componentName);
@@ -111,10 +137,10 @@ class ViewAnalyzer
             );
         }
 
-        // Search for Inertia::render() if using Inertia
+        // Search for Inertia::render() if using Inertia (page components)
         $count += $this->searchService->searchInDirectory(
             app_path(),
-            "Inertia::render\(['\"]" . preg_quote($viewName, '/') . "['\"]"
+            "Inertia::render\(['\"]{$quoted}['\"]"
         );
 
         return $count;
